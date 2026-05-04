@@ -4,7 +4,7 @@ API_OpenMeteo_Solar.py
 
 Este script descarga el histórico climático de la planta solar "El Paso" (Cesar, Colombia)
 utilizando la API pública Historical Weather API de Open-Meteo (sin API key).
-Se filtran los datos para el rango de luz solar (6:00 a.m. a 6:00 p.m.) y se agrupan
+Se filtran los datos para el rango de luz solar (6:00 a.m. a 5:00 p.m.) y se agrupan
 mensualmente para su uso en un modelo de Red Neuronal Recurrente.
 
 Requerimientos:
@@ -94,11 +94,11 @@ def process_and_filter_data(json_data: dict) -> pd.DataFrame:
     # Convertir 'time' a formato datetime de Pandas
     df["time"] = pd.to_datetime(df["time"])
     
-    logging.info("Filtrando datos para el rango horario de luz solar (06:00 - 18:00)...")
+    logging.info("Filtrando datos para el rango horario de luz solar (06:00 - 17:00)...")
     
-    # Filtrar entre las 06:00 y las 18:00 inclusive
+    # Filtrar entre las 06:00 y las 17:00 inclusive
     # (dt.hour extrae la hora en formato 24h, 0 a 23)
-    df_diurno = df[(df["time"].dt.hour >= 6) & (df["time"].dt.hour <= 18)].copy()
+    df_diurno = df[(df["time"].dt.hour >= 6) & (df["time"].dt.hour <= 17)].copy()
     
     return df_diurno
 
