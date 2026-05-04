@@ -2,16 +2,20 @@
 
 Este proyecto contiene una serie de scripts en Python diseñados para la extracción, procesamiento y consolidación de datos climáticos y de generación eléctrica para la planta solar "El Paso" (Cesar, Colombia). El objetivo final es generar datasets limpios (`daily_data.csv` y `monthly_data.csv`) listos para ser utilizados en modelos de Redes Neuronales Recurrentes (RNN).
 
+## Origen y Naturaleza de los Datos
+
+Para el entrenamiento del modelo, se han combinado dos fuentes de datos distintas:
+
+*   **Datos de Generación (kWh):** Son **datos reales y medidos**. Provienen de los registros oficiales de **XM** (operador del mercado eléctrico colombiano). Representan la energía real captada por los sensores y medidores físicos de la planta solar "El Paso".
+*   **Datos Climáticos (Temperatura, Viento, Irradiancia):** Son **datos de reanálisis meteorológico** obtenidos a través de la API de **Open-Meteo** (Modelo ERA5). Proporcionan una estimación científica de alta precisión de las condiciones atmosféricas en las coordenadas exactas de la planta, integrando información satelital y estaciones meteorológicas globales.
+
 ## Estructura de Scripts
 
 ### 1. `API_OpenMeteo_Solar.py`
-Script original que descarga el histórico climático (temperatura, velocidad del viento e irradiancia) desde la API de Open-Meteo. 
+Script original que descarga el histórico climático desde la API de Open-Meteo. 
 - **Rango:** 2019-01-01 a 2023-12-31.
 - **Filtro:** Horas diurnas (6:00 a.m. a 5:00 p.m.).
 - **Agregación:** Promedios mensuales.
-
-> [!NOTE]
-> **Sobre los datos de Open-Meteo:** Los datos obtenidos son de **reanálisis meteorológico** (Modelo ERA5). Son datos históricos procesados que combinan observaciones reales con modelos globales para proporcionar una estimación precisa en las coordenadas exactas de la planta. Aunque la API entrega datos con resolución **horaria**, los scripts los agrupan localmente para los fines del proyecto.
 
 
 ### 2. `clima_diario_el_paso_diurno.py`
@@ -45,7 +49,7 @@ Los archivos resultantes son el producto final del pipeline de datos y contienen
   4.  **`Dia`**: Día del mes (1-31).
   5.  **`Recurso`**: Nombre de la planta ("EL PASO").
   6.  **`6` al `17`**: Generación real en kWh para cada una de las 12 horas diurnas.
-  7.  **`Promedio_Generacion`**: Promedio de generación (de las horas 6 a 17) para el día correspondiente.
+  7.  **`Total_Generacion`**: Suma de la generación (de las horas 6 a 17) dando el total de ese día.
   8.  **`Temperatura_Tt`**: Temperatura promedio diaria (°C).
   9.  **`Viento_Wt`**: Velocidad del viento promedio diaria (km/h).
   10. **`Irradiancia_It`**: Irradiancia de onda corta promedio diaria (W/m²).
@@ -56,7 +60,7 @@ Los archivos resultantes son el producto final del pipeline de datos y contienen
   1.  **`Año`** y **`Mes`**: Identificadores del mes.
   2.  **`Recurso`**: Nombre de la planta ("EL PASO").
   3.  **`6` al `17`**: Promedio mensual de generación en kWh para cada una de esas horas.
-  4.  **`Promedio_Generacion`**: Promedio global mensual de generación en el rango diurno.
+  4.  **`Total_Generacion`**: Promedio global mensual de la generación total diaria.
   5.  **`Temperatura_Tt`, `Viento_Wt`, `Irradiancia_It`**: Promedio mensual de las variables climáticas.
 
 ---

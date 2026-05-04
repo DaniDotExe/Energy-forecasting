@@ -46,8 +46,8 @@ df_final.insert(1, 'Año', df_final['Fecha'].dt.year)
 df_final.insert(2, 'Mes', df_final['Fecha'].dt.month)
 df_final.insert(3, 'Dia', df_final['Fecha'].dt.day)
 
-# Calcular el promedio de generación por día
-df_final['Promedio_Generacion'] = df_final[horas_cols].mean(axis=1)
+# Calcular el total de generación por día
+df_final['Total_Generacion'] = df_final[horas_cols].sum(axis=1)
 
 # 5. Exportar el archivo diario
 print(f"Exportando datos diarios a {daily_output_file}...")
@@ -55,7 +55,7 @@ df_final.to_csv(daily_output_file, index=False, encoding='utf-8-sig')
 
 # 6. Crear y exportar el dataset mensual (promedio)
 print("Calculando promedio mensual...")
-numeric_cols = horas_cols + ['Promedio_Generacion', 'Temperatura_Tt', 'Viento_Wt', 'Irradiancia_It']
+numeric_cols = horas_cols + ['Total_Generacion', 'Temperatura_Tt', 'Viento_Wt', 'Irradiancia_It']
 df_monthly = df_final.groupby(['Año', 'Mes', 'Recurso'])[numeric_cols].mean().reset_index()
 
 print(f"Exportando datos mensuales a {monthly_output_file}...")
