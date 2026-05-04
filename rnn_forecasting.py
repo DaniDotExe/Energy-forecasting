@@ -216,6 +216,16 @@ def run_pipeline(data_path, output_subdir, lookback, title_prefix):
     fig.savefig(os.path.join(out_dir, 'prediccion_completa.png'), dpi=300)
     plt.close()
 
+    # 8. Graficar (Solo Test - Zoom)
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(fechas_seq[val_split:], y_test_real, 'b-o', label='Real Test', markersize=4, alpha=0.7)
+    ax.plot(fechas_seq[val_split:], y_test_pred, 'r--s', label='Predicción Test', markersize=4, alpha=0.8)
+    ax.set_title(f'Predicción Test RNN ({title_prefix}) - MAPE: {mape:.2f}%')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.savefig(os.path.join(out_dir, 'prediccion_test.png'), dpi=300)
+    plt.close()
+
     print(f"  Resultados en {output_subdir}: MAPE = {mape:.2f}%")
     return mape
 
