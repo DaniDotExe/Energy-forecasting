@@ -28,8 +28,30 @@ cells.append(md("""# Pronóstico de Generación Solar - Planta "El Paso"
 | **Partición** | 90% ajuste / 10% test | 70% train / 20% val / 10% test |
 | **Métrica principal** | MAPE (%) | MAPE (%) |"""))
 
-# ===================== SECCIÓN 2: IMPORTS =====================
-cells.append(md("## 1. Importación de Librerías"))
+# ===================== SECCIÓN 2: INSTALAR DEPENDENCIAS (COLAB) =====================
+cells.append(md("## 1. Instalación de Dependencias (Google Colab)"))
+cells.append(code("""!pip install -q statsmodels torch scikit-learn matplotlib pandas numpy"""))
+
+# ===================== SECCIÓN 3: SUBIR ARCHIVOS =====================
+cells.append(md("""## 2. Carga de Archivos
+
+> **Instrucción:** Sube los archivos `monthly_data.csv` y `daily_data.csv` a la raíz del proyecto en Colab (carpeta `/content/`).\n> Puedes hacerlo arrastrándolos al panel de archivos de la izquierda, o ejecutando la celda de abajo."""))
+
+cells.append(code("""from google.colab import files
+import os
+
+# Subir archivos manualmente
+uploaded = files.upload()
+
+# Verificar que los archivos están en /content/
+for f in ['monthly_data.csv', 'daily_data.csv']:
+    if os.path.exists(f'/content/{f}'):
+        print(f'✓ {f} cargado correctamente.')
+    else:
+        print(f'✗ {f} NO encontrado. Por favor súbelo.')"""))
+
+# ===================== SECCIÓN 4: IMPORTS =====================
+cells.append(md("## 3. Importación de Librerías"))
 cells.append(code("""import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -51,12 +73,11 @@ np.random.seed(42)
 torch.manual_seed(42)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f"Dispositivo: {device}")"""))
+print(f'Dispositivo: {device}')"""))
 
-# ===================== SECCIÓN 3: CARGA DE DATOS =====================
-cells.append(md("## 2. Carga y Exploración de Datos"))
-cells.append(code("""BASE_DIR = r"d:\\Software\\Energy-forecasting"
-df = pd.read_csv(os.path.join(BASE_DIR, "monthly_data.csv"), encoding='utf-8-sig')
+# ===================== SECCIÓN 5: CARGA DE DATOS =====================
+cells.append(md("## 4. Carga y Exploración de Datos"))
+cells.append(code("""df = pd.read_csv('/content/monthly_data.csv', encoding='utf-8-sig')
 
 # Limpiar nombres de columnas
 df.columns = [c.replace('\\ufeff', '').strip() for c in df.columns]
@@ -73,7 +94,7 @@ print(df[['Fecha','Total_Generacion','Temperatura_Tt','Viento_Wt','Irradiancia_I
 df[['Fecha','Total_Generacion','Temperatura_Tt','Viento_Wt','Irradiancia_It']].head(10)"""))
 
 # ===================== SECCIÓN 4: VISUALIZACIÓN EXPLORATORIA =====================
-cells.append(md("## 3. Análisis Exploratorio"))
+cells.append(md("## 5. Análisis Exploratorio"))
 cells.append(code("""fig, axes = plt.subplots(4, 1, figsize=(14, 12), sharex=True)
 
 variables = [
@@ -95,7 +116,7 @@ plt.tight_layout()
 plt.show()"""))
 
 # ===================== SECCIÓN 5: HOLT-WINTERS =====================
-cells.append(md("""## 4. Modelo 1: Holt-Winters (Suavizado Exponencial Triple)
+cells.append(md("""## 6. Modelo 1: Holt-Winters (Suavizado Exponencial Triple)
 
 Holt-Winters es un método estadístico clásico que descompone la serie temporal en tres componentes:
 - **Nivel:** El valor promedio de la serie.
@@ -136,7 +157,7 @@ epsilon = 1e-10
 mape_hw = np.mean(np.abs((y_test_hw - hw_forecast) / (y_test_hw + epsilon))) * 100
 print(f"\\n>>> MAPE Holt-Winters (Test): {mape_hw:.2f}% <<<")"""))
 
-cells.append(md("### 4.1 Gráficas Holt-Winters"))
+cells.append(md("### 6.1 Gráficas Holt-Winters"))
 cells.append(code("""fig, axes = plt.subplots(2, 1, figsize=(14, 10))
 
 # Gráfica completa
@@ -159,7 +180,7 @@ plt.tight_layout()
 plt.show()"""))
 
 # ===================== SECCIÓN 6: LSTM =====================
-cells.append(md("""## 5. Modelo 2: Red Neuronal Recurrente (LSTM Avanzada - PyTorch)
+cells.append(md("""## 7. Modelo 2: Red Neuronal Recurrente (LSTM Avanzada - PyTorch)
 
 La LSTM (Long Short-Term Memory) es una arquitectura de red neuronal diseñada específicamente para aprender dependencias temporales a largo plazo.
 
@@ -193,7 +214,7 @@ class AdvancedLSTMModel(nn.Module):
 
 print("Arquitectura definida correctamente.")"""))
 
-cells.append(md("### 5.1 Preparación de Datos para la LSTM"))
+cells.append(md("### 7.1 Preparación de Datos para la LSTM"))
 cells.append(code("""FEATURE_COLS = ['Mes', 'Temperatura_Tt', 'Viento_Wt', 'Irradiancia_It']
 TARGET_COL = 'Total_Generacion'
 LOOKBACK = 6  # Ventana de 6 meses
@@ -232,7 +253,7 @@ train_dl = DataLoader(TensorDataset(torch.tensor(X_tr, dtype=torch.float32),
 val_dl   = DataLoader(TensorDataset(torch.tensor(X_va, dtype=torch.float32),
                                      torch.tensor(y_va, dtype=torch.float32)), batch_size=BATCH_SIZE, shuffle=False)"""))
 
-cells.append(md("### 5.2 Entrenamiento de la LSTM"))
+cells.append(md("### 7.2 Entrenamiento de la LSTM"))
 cells.append(code("""model = AdvancedLSTMModel(input_size=len(FEATURE_COLS)).to(device)
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
@@ -274,7 +295,7 @@ for epoch in range(EPOCHS):
 model.load_state_dict(best_state)
 print(f"Entrenamiento finalizado en {len(train_losses)} épocas.")"""))
 
-cells.append(md("### 5.3 Predicciones y Métricas LSTM"))
+cells.append(md("### 7.3 Predicciones y Métricas LSTM"))
 cells.append(code("""model.eval()
 with torch.no_grad():
     pred_tr = model(torch.tensor(X_tr, dtype=torch.float32).to(device)).cpu().numpy()
@@ -293,7 +314,7 @@ epsilon = 1e-10
 mape_lstm = np.mean(np.abs((real_te - pred_te) / (real_te + epsilon))) * 100
 print(f"\\n>>> MAPE LSTM (Test): {mape_lstm:.2f}% <<<")"""))
 
-cells.append(md("### 5.4 Gráficas LSTM"))
+cells.append(md("### 7.4 Gráficas LSTM"))
 cells.append(code("""fig, axes = plt.subplots(3, 1, figsize=(14, 14))
 
 # Loss
@@ -324,7 +345,7 @@ plt.tight_layout()
 plt.show()"""))
 
 # ===================== SECCIÓN 7: COMPARACIÓN =====================
-cells.append(md("""## 6. Comparación Final: Holt-Winters vs. LSTM
+cells.append(md("""## 8. Comparación Final: Holt-Winters vs. LSTM
 
 A continuación se presenta la comparación directa de ambos modelos sobre el mismo periodo de test (los últimos 6 meses de 2023)."""))
 
@@ -357,7 +378,7 @@ plt.tight_layout()
 plt.show()"""))
 
 # ===================== SECCIÓN 8: CONCLUSIONES =====================
-cells.append(md("""## 7. Conclusiones
+cells.append(md("""## 9. Conclusiones
 
 ### Hallazgos Principales
 
@@ -379,22 +400,24 @@ nb = {
     "nbformat": 4,
     "nbformat_minor": 5,
     "metadata": {
+        "colab": {"provenance": [], "gpuType": "T4"},
         "kernelspec": {
-            "display_name": "Python 3 (EEG)",
+            "display_name": "Python 3",
             "language": "python",
             "name": "python3"
         },
         "language_info": {
             "name": "python",
-            "version": "3.14.0"
-        }
+            "version": "3.10.0"
+        },
+        "accelerator": "GPU"
     },
     "cells": cells
 }
 
 BASE_DIR = r"d:\Software\Energy-forecasting"
-output_path = os.path.join(BASE_DIR, "Solar_Forecasting_Comparison.ipynb")
+output_path = os.path.join(BASE_DIR, "Solar_Forecasting_Colab.ipynb")
 with open(output_path, 'w', encoding='utf-8') as f:
     json.dump(nb, f, ensure_ascii=False, indent=1)
 
-print(f"Notebook creado exitosamente: {output_path}")
+print(f"Notebook Colab creado exitosamente: {output_path}")
