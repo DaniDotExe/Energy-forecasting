@@ -10,7 +10,7 @@ all_data = []
 print("=== Starting data extraction for EL PASO (Solar) ===")
 
 for year in years:
-    file_path = os.path.join(base_dir, f"Generacion_(kWh)_{year}.xlsx")
+    file_path = os.path.join(base_dir, "data", f"Generacion_(kWh)_{year}.xlsx")
     
     if not os.path.exists(file_path):
         print(f"File not found: {file_path}")
@@ -60,7 +60,7 @@ if all_data:
     print("Concatenating data from all years...")
     final_df = pd.concat(all_data, ignore_index=True)
     
-    output_file = os.path.join(base_dir, "data_2019_2023_kwH_xm.csv")
+    output_file = os.path.join(base_dir, "data", "data_2019_2023_kwH_xm.csv")
     final_df.to_csv(output_file, index=False, encoding='utf-8-sig')
     
     print(f"=== Successfully saved aggregated data to: {output_file} ===")

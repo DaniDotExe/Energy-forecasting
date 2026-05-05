@@ -16,6 +16,7 @@ import requests
 import pandas as pd
 import logging
 import sys
+import os
 
 # Configuración básica de logging
 logging.basicConfig(
@@ -41,7 +42,7 @@ HOURLY_VARIABLES = [
 API_URL = "https://archive-api.open-meteo.com/v1/archive"
 
 # Nombre del archivo de salida
-OUTPUT_FILE = "clima_diario_el_paso_diurno.csv"
+OUTPUT_FILE = os.path.join(r"d:\Software\Energy-forecasting\data", "clima_diario_el_paso_diurno.csv")
 
 
 def fetch_weather_data() -> dict:

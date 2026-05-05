@@ -21,7 +21,7 @@ warnings.filterwarnings('ignore')
 # CONFIGURACIÓN GLOBAL
 # ============================================================
 BASE_DIR = r"d:\Software\Energy-forecasting"
-RESULTS_BASE_DIR = os.path.join(BASE_DIR, "resultados_hw")
+RESULTS_BASE_DIR = os.path.join(BASE_DIR, "output", "resultados_hw")
 TARGET_COL = 'Total_Generacion'
 
 def run_hw_pipeline(data_path, output_subdir, seasonal_periods, title_prefix):
@@ -118,13 +118,13 @@ def run_hw_pipeline(data_path, output_subdir, seasonal_periods, title_prefix):
 if __name__ == "__main__":
     experimentos = [
         {
-            'path': os.path.join(BASE_DIR, "monthly_data.csv"),
+            'path': os.path.join(BASE_DIR, "data", "monthly_data.csv"),
             'subdir': 'monthly',
             'seasonal_periods': 12, # Estacionalidad anual mensual (12 meses)
             'name': 'Datos Mensuales'
         },
         {
-            'path': os.path.join(BASE_DIR, "daily_data.csv"),
+            'path': os.path.join(BASE_DIR, "data", "daily_data.csv"),
             'subdir': 'daily',
             'seasonal_periods': 365, # Estacionalidad anual diaria (365 días)
             'name': 'Datos Diarios'

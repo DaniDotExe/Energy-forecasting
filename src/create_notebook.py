@@ -416,7 +416,7 @@ nb = {
 }
 
 BASE_DIR = r"d:\Software\Energy-forecasting"
-output_path = os.path.join(BASE_DIR, "Solar_Forecasting_Colab.ipynb")
+output_path = os.path.join(BASE_DIR, "src", "Solar_Forecasting_Colab.ipynb")
 with open(output_path, 'w', encoding='utf-8') as f:
     json.dump(nb, f, ensure_ascii=False, indent=1)
 

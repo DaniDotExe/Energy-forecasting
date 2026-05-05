@@ -21,7 +21,7 @@ warnings.filterwarnings('ignore')
 # CONFIGURACIÓN GLOBAL
 # ============================================================
 BASE_DIR = r"d:\Software\Energy-forecasting"
-RESULTS_BASE_DIR = os.path.join(BASE_DIR, "resultados_sarimax")
+RESULTS_BASE_DIR = os.path.join(BASE_DIR, "output", "resultados_sarimax")
 
 FEATURE_COLS = ['Temperatura_Tt', 'Viento_Wt', 'Irradiancia_It']
 TARGET_COL = 'Total_Generacion'
@@ -130,14 +130,14 @@ if __name__ == "__main__":
     # Para obtener parámetros perfectos usualmente se usa un auto_arima grid search
     experimentos = [
         {
-            'path': os.path.join(BASE_DIR, "monthly_data.csv"),
+            'path': os.path.join(BASE_DIR, "data", "monthly_data.csv"),
             'subdir': 'monthly',
             'order': (1, 1, 1),
             'seasonal_order': (1, 1, 0, 12), # Estacionalidad anual mensual (12 meses)
             'name': 'Datos Mensuales'
         },
         {
-            'path': os.path.join(BASE_DIR, "daily_data.csv"),
+            'path': os.path.join(BASE_DIR, "data", "daily_data.csv"),
             'subdir': 'daily',
             'order': (1, 1, 1),
             # Para diarios usar m=365 requiere extrema computación. Usaremos m=7 (semanal) como 

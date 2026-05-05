@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import os
 
 base_dir = r"d:\Software\Energy-forecasting"
-daily_file = os.path.join(base_dir, "daily_data.csv")
-monthly_file = os.path.join(base_dir, "monthly_data.csv")
+daily_file = os.path.join(base_dir, "data", "daily_data.csv")
+monthly_file = os.path.join(base_dir, "data", "monthly_data.csv")
 
 # Directorio para guardar las gráficas
 plots_dir = os.path.join(base_dir, "graficas")

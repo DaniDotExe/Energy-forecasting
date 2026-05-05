@@ -30,7 +30,7 @@ torch.manual_seed(42)
 # CONFIGURACIÓN GLOBAL Y DISPOSITIVO
 # ============================================================
 BASE_DIR = r"d:\Software\Energy-forecasting"
-RESULTS_BASE_DIR = os.path.join(BASE_DIR, "resultados_rnn")
+RESULTS_BASE_DIR = os.path.join(BASE_DIR, "output", "resultados_rnn")
 
 # Parámetros del modelo
 EPOCHS = 1000
@@ -269,13 +269,13 @@ def run_pipeline(data_path, output_subdir, lookback, title_prefix):
 if __name__ == "__main__":
     experimentos = [
         {
-            'path': os.path.join(BASE_DIR, "monthly_data.csv"),
+            'path': os.path.join(BASE_DIR, "data", "monthly_data.csv"),
             'subdir': 'monthly',
             'lookback': 6,
             'name': 'Datos Mensuales'
         },
         {
-            'path': os.path.join(BASE_DIR, "daily_data.csv"),
+            'path': os.path.join(BASE_DIR, "data", "daily_data.csv"),
             'subdir': 'daily',
             'lookback': 30,
             'name': 'Datos Diarios'

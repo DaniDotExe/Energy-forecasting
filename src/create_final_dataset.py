@@ -3,10 +3,10 @@ import pandas as pd
 import os
 
 base_dir = r"d:\Software\Energy-forecasting"
-generation_file = os.path.join(base_dir, "data_2019_2023_kwH_xm.csv")
-weather_file = os.path.join(base_dir, "clima_diario_el_paso_diurno.csv")
-daily_output_file = os.path.join(base_dir, "daily_data.csv")
-monthly_output_file = os.path.join(base_dir, "monthly_data.csv")
+generation_file = os.path.join(base_dir, "data", "data_2019_2023_kwH_xm.csv")
+weather_file = os.path.join(base_dir, "data", "clima_diario_el_paso_diurno.csv")
+daily_output_file = os.path.join(base_dir, "data", "daily_data.csv")
+monthly_output_file = os.path.join(base_dir, "data", "monthly_data.csv")
 
 print("=== Iniciando creación del dataset final ===")
 
