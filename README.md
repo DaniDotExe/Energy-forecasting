@@ -6,12 +6,18 @@ Ubicación de la planta: 9.785041627157241, -73.7201783147516
 Rango de fecha de los datos: 2019-01-01 a 2023-12-31
 
 ## Estructura del Proyecto
-El repositorio está organizado de la siguiente manera para mantener la trazabilidad y el orden en el flujo de datos:
+El repositorio está organizado de la siguiente manera:
 
-- `src/`: Contiene los scripts de Python para la extracción de APIs (`API_OpenMeteo_Solar.py`, `API_NASAPOWER.py`) y futuros scripts de modelado.
-- `data/`: Almacena los archivos CSV generados por las APIs y los datos históricos de XM.
-- `output/`: Directorio destinado a guardar los resultados de entrenamiento de los modelos (pesos, logs, métricas).
-- `graficas/`: Carpeta para visualizaciones de análisis exploratorio (EDA) y resultados de predicción.
+- `data/`: Almacena los archivos CSV originales de las APIs, los datos históricos de XM y el dataset consolidado (`data-hourly.csv`).
+- `src/`: Scripts de Python para procesamiento y análisis:
+    - `API_NASAPOWER.py` / `API_OpenMeteo_Solar.py`: Extracción de datos climáticos históricos.
+    - `dataset_maker.py`: Genera el dataset final (`data-hourly.csv`) uniendo clima y generación en el rango 06:00-17:00.
+    - `Analyze_xm.py`: EDA de los datos de generación de XM (estacionalidad, perfiles diarios).
+    - `Analyze_NASA_xm_correlation.py`: Análisis de correlación clima-generación y dependencia temporal (ACF/PACF).
+- `EDA/`: Visualizaciones generadas por los scripts de análisis:
+    - `XM/`: Análisis detallado de la planta solar (perfiles por hora, promedios diarios, etc.).
+    - `NASA_xm_correlation/`: Heatmaps de correlación y gráficos de dispersión.
+- `output/`: Directorio para modelos entrenados y resultados técnicos.
 
 ## Metodología de Procesamiento
 Para asegurar la consistencia entre las fuentes climáticas y los datos de generación real, se aplica el siguiente criterio de procesamiento:
@@ -49,6 +55,7 @@ Para garantizar la robustez del modelo, se utilizan tres fuentes principales de 
 [NASA POWER](https://power.larc.nasa.gov/) (Prediction Of Worldwide Energy Resources) proporciona datos derivados de la misión satelital GEOS (Goddard Earth Observing System) y modelos de asimilación de datos atmosféricos.
 -   **Origen:** Datos obtenidos principalmente mediante sensores satelitales calibrados para estudios de energía renovable y agricultura.
 -   **Nivel de Confianza:** **Alto**. Muy utilizado en la industria solar para estimar el recurso disponible en sitios sin estaciones meteorológicas cercanas.
+-   **Justificación de Selección:** Se seleccionó esta fuente como base principal para el dataset consolidado debido a que **no presenta valores faltantes (nulls)** en el rango de tiempo estudiado.
 -   **Archivo de salida:** `data/nasapower-horario.csv`
 
 | Variable API | Columna CSV | Unidad | Descripción |
@@ -70,3 +77,9 @@ Para garantizar la robustez del modelo, se utilizan tres fuentes principales de 
 | **Fecha** | `Fecha` | YYYY-MM-DD | Fecha del reporte de generación. |
 | **Recurso** | `Recurso` | Texto | Nombre de la planta (EL PASO). |
 | **Generación Horaria** | `0, 1, ..., 23` | kWh | Energía real generada en cada intervalo de una hora. |
+| **Versión** | `Version` | Texto | Código de versión del dato reportado. |
+
+### 4. Dataset Consolidado (`data-hourly.csv`)
+Este archivo es el resultado de ejecutar `dataset_maker.py`. Combina las variables de NASA POWER con la generación real de XM.
+- **Rango:** 06:00 AM a 05:00 PM (12 registros por día).
+- **Contenido:** `Fecha_Hora`, `Irradiancia_It`, `Temperatura_Tt`, `Humedad_Ht`, `Viento_Wt`, `kWh`.
