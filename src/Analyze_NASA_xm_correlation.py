@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+
 
 def main():
     # Rutas de archivos y directorios
@@ -53,25 +53,6 @@ def main():
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, 'scatter_irradiancia_vs_generacion.png'), dpi=300)
-    plt.close()
-    
-    # ---------------------------------------------------------
-    # 3. Correlación Temporal (ACF y PACF)
-    # ---------------------------------------------------------
-    # ACF
-    fig, ax = plt.subplots(figsize=(12, 5))
-    plot_acf(df['kWh'], lags=48, ax=ax, title='Autocorrelación (ACF) - Generación kWh')
-    plt.xlabel('Lags (Horas)')
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'acf_generacion.png'), dpi=300)
-    plt.close()
-    
-    # PACF
-    fig, ax = plt.subplots(figsize=(12, 5))
-    plot_pacf(df['kWh'], lags=48, ax=ax, title='Autocorrelación Parcial (PACF) - Generación kWh')
-    plt.xlabel('Lags (Horas)')
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'pacf_generacion.png'), dpi=300)
     plt.close()
     
     print(f"Análisis completado. Gráficas guardadas en: {os.path.normpath(output_dir)}")
