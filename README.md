@@ -6,10 +6,22 @@ Ubicación de la planta: 9.785041627157241, -73.7201783147516
 
 Rango de fecha de los datos: 2019-01-01 a 2023-12-31
 
-## Origen y Naturaleza de los Datos
+## Fuentes de Datos
 
-Para el entrenamiento del modelo, se han combinado dos fuentes de datos distintas:
+El proyecto utiliza actualmente tres fuentes principales de información (en desarrollo):
 
-*   **Datos de Generación (kWh):** Son **datos reales y medidos**. Provienen de los registros oficiales de **XM** (operador del mercado eléctrico colombiano). Representan la energía real captada por los sensores y medidores físicos de la planta solar "El Paso".
-*   **Datos Climáticos (Temperatura, Viento, Irradiancia):** Son **datos de reanálisis 
+### 1. Open-Meteo (Datos Climáticos de Reanálisis)
+Se utiliza la API de [Open-Meteo](https://open-meteo.com/) (Modelo ERA5/ERA5-Land) para obtener el histórico climático en las coordenadas exactas de la planta. Los datos están configurados para el rango horario de **06:00 a 17:00** (12 horas por día).
 
+| Variable | Columna CSV | Unidad | Descripción |
+| :--- | :--- | :--- | :--- |
+| **Fecha y Hora** | `Fecha_Hora` | YYYY-MM-DD HH:MM | Marca de tiempo en zona horaria local. |
+| **Irradiancia** | `Irradiancia_It` | W/m² | Irradiancia de onda corta global. |
+| **Temperatura** | `Temperatura_Tt` | °C | Temperatura del aire a 2 metros de altura. |
+| **Humedad** | `Humedad_Ht` | % | Humedad relativa a 2 metros de altura. |
+| **Viento** | `Viento_Wt` | km/h | Velocidad del viento a 10 metros de altura. |
+
+**Archivo de salida:** `data/openmeteo-horario.csv`
+
+---
+*Próximamente se documentarán las fuentes de Generación Real (XM) y Pronósticos.*
