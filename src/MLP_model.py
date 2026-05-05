@@ -6,28 +6,34 @@ import torch.nn as nn
 # ──────────────────────────────────────────────────────────────────────
 class SolarMLP(nn.Module):
     """
-    Red Neuronal Densa (MLP) para predicción mensual.
-    Recibe una ventana de meses y devuelve el kWh del siguiente mes.
+    Red Neuronal Densa (MLP) de Alta Complejidad.
+    Incluye múltiples capas ocultas y Dropout.
     """
-    def __init__(self, input_size, hidden_size=64, dropout=0.2):
+    def __init__(self, input_size, hidden_size=256, dropout=0.3):
         super(SolarMLP, self).__init__()
         
-        # El input_size será: (INPUT_WINDOW * N_FEATURES)
-        self.network = nn.Sequential(
-            nn.Linear(input_size, hidden_size),
-            nn.BatchNorm1d(hidden_size),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            
-            nn.Linear(hidden_size, hidden_size // 2),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            
-            nn.Linear(hidden_size // 2, 1) # Salida: 1 solo valor (kWh del mes siguiente)
-        )
+        self.fc1 = nn.Linear(input_size, hidden_size)
+        self.bn1 = nn.BatchNorm1d(hidden_size)
+        self.relu1 = nn.ReLU()
+        self.drop1 = nn.Dropout(dropout)
+        
+        self.fc2 = nn.Linear(hidden_size, hidden_size)
+        self.bn2 = nn.BatchNorm1d(hidden_size)
+        self.relu2 = nn.ReLU()
+        self.drop2 = nn.Dropout(dropout)
+        
+        self.fc3 = nn.Linear(hidden_size, hidden_size // 2)
+        self.bn3 = nn.BatchNorm1d(hidden_size // 2)
+        self.relu3 = nn.ReLU()
+        
+        self.output = nn.Linear(hidden_size // 2, 1)
         
     def forward(self, x):
-        # x tiene forma (batch, seq_len, features)
-        # Para un MLP plano, debemos "aplanar" la secuencia
-        x = x.view(x.size(0), -1) # (batch, seq_len * features)
-        return self.network(x)
+        # Aplanar (batch, seq, feat) -> (batch, seq * feat)
+        x = x.view(x.size(0), -1)
+        
+        x = self.drop1(self.relu1(self.bn1(self.fc1(x))))
+        x = self.drop2(self.relu2(self.bn2(self.fc2(x))))
+        x = self.relu3(self.bn3(self.fc3(x)))
+        
+        return self.output(x)

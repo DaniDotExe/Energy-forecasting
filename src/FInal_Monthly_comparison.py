@@ -10,6 +10,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import MinMaxScaler
 from statsmodels.tsa.statespace.sarimax import SARIMAX
+import xgboost as xgb
 
 warnings.filterwarnings('ignore')
 
@@ -26,9 +27,10 @@ OUTPUT_WINDOW = 1  # Predecir 1 mes a la vez
 BATCH_SIZE = 4     # Batch pequeño por pocos datos
 EPOCHS = 200
 
-# Importamos MLP
+# Importamos MLP y XGBoost
 sys.path.insert(0, BASE_DIR)
 from MLP_model import SolarMLP
+from XGBOOST import train_xgboost, predict_xgboost_recursive
 # Reusamos la lógica de LSTM pero ligera
 from LSTM_model import SolarLSTM, get_device
 
@@ -108,15 +110,25 @@ def main():
     loader = DataLoader(MonthlyDataset(X_train, y_train), batch_size=BATCH_SIZE, shuffle=True)
     
     # --- 3. LSTM ---
-    print("[2/3] Entrenando LSTM Mensual...")
-    # Usamos una versión pequeña del LSTM (1 capa, 32 unidades)
+    print("[2/5] Entrenando LSTM Mensual...")
     lstm_model = SolarLSTM(n_features=n_feat, hidden_size=32, num_layers=1, output_window=1)
     lstm_model = train_nn(lstm_model, loader, device)
     
     # --- 4. MLP ---
-    print("[3/3] Entrenando MLP Mensual...")
-    mlp_model = SolarMLP(input_size=INPUT_WINDOW * n_feat, hidden_size=64)
+    print("[3/5] Entrenando MLP Mensual Complejo...")
+    mlp_model = SolarMLP(input_size=INPUT_WINDOW * n_feat, hidden_size=256)
     mlp_model = train_nn(mlp_model, loader, device)
+    
+    # --- 5. XGBoost (Recursivo con Memoria) ---
+    print("[4/5] Entrenando XGBoost con Memoria (12m)...")
+    xgb_model = train_xgboost(X_train, y_train)
+    
+    # --- 6. XGBoost (Directo - Solo Clima actual) ---
+    print("[5/5] Entrenando XGBoost Directo (Solo Clima actual)...")
+    X_train_direct = s_train[:, :-1]
+    y_train_direct = s_train[:, -1]
+    xgb_direct_model = xgb.XGBRegressor(n_estimators=200, max_depth=4, learning_rate=0.05, random_state=42)
+    xgb_direct_model.fit(X_train_direct, y_train_direct)
     
     # --- 5. Predicción Recursiva para Redes ---
     def predict_recursive(model, initial_context, steps):
@@ -143,6 +155,12 @@ def main():
     
     lstm_scaled_preds = predict_recursive(lstm_model, s_train, 6)
     mlp_scaled_preds = predict_recursive(mlp_model, s_train, 6)
+    xgb_scaled_preds = predict_xgboost_recursive(xgb_model, s_train, 6, s_test, s_train, INPUT_WINDOW, n_feat)
+    
+    # Predicción Directa XGBoost (Solo pasar el clima de los meses de test de s_test)
+    # s_test contiene los 6 meses de test al final
+    X_test_direct = s_test[-6:, :-1]
+    xgb_direct_scaled_preds = xgb_direct_model.predict(X_test_direct)
     
     # Des-escalar
     def denormalize(p_scaled):
@@ -152,6 +170,8 @@ def main():
     
     lstm_final = denormalize(lstm_scaled_preds)
     mlp_final = denormalize(mlp_scaled_preds)
+    xgb_final = denormalize(xgb_scaled_preds)
+    xgb_direct_final = denormalize(xgb_direct_scaled_preds)
     
     # --- 6. Resultados ---
     results_df = pd.DataFrame({
@@ -159,7 +179,9 @@ def main():
         'Real': test_df['kWh_Total'],
         'SARIMAX': sarima_preds,
         'LSTM': lstm_final,
-        'MLP': mlp_final
+        'MLP': mlp_final,
+        'XGB_Mem': xgb_final,
+        'XGB_Direct': xgb_direct_final
     })
     
     print("\n" + "-"*70)
@@ -173,6 +195,8 @@ def main():
     plt.plot(results_df['Mes'], results_df['SARIMAX'], marker='s', label='SARIMAX', linestyle='--')
     plt.plot(results_df['Mes'], results_df['LSTM'], marker='^', label='LSTM', linestyle='--')
     plt.plot(results_df['Mes'], results_df['MLP'], marker='x', label='MLP', linestyle='--')
+    plt.plot(results_df['Mes'], results_df['XGB_Mem'], marker='d', label='XGBoost (Memoria)', linestyle='--')
+    plt.plot(results_df['Mes'], results_df['XGB_Direct'], marker='p', label='XGBoost (Directo)', linestyle='-', color='red', linewidth=2)
     
     plt.title('Comparación Mensual Final (Jul-Dic 2023)', fontsize=14, fontweight='bold')
     plt.ylabel('kWh Total')
@@ -183,7 +207,32 @@ def main():
     plt.savefig(plot_path, dpi=200)
     plt.close()
     
+    # --- 7. Guardar Métricas en CSV Automáticamente ---
+    from sklearn.metrics import mean_squared_error, mean_absolute_error
+    
+    def calculate_mape(y_true, y_pred):
+        return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+
+    metrics = []
+    for model_name in ['SARIMAX', 'LSTM', 'MLP', 'XGB_Mem', 'XGB_Direct']:
+        y_true = results_df['Real']
+        y_pred = results_df[model_name]
+        rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+        mae = mean_absolute_error(y_true, y_pred)
+        mape = calculate_mape(y_true, y_pred)
+        metrics.append({'Modelo': model_name, 'RMSE': rmse, 'MAE': mae, 'MAPE (%)': mape})
+    
+    metrics_df = pd.DataFrame(metrics)
+    metrics_path = os.path.join(OUTPUT_DIR, 'monthly_metrics.csv')
+    metrics_df.to_csv(metrics_path, index=False)
+    
+    print("\n" + "-"*70)
+    print("  MÉTRICAS COMPARATIVAS")
+    print("-"*70)
+    print(metrics_df.to_string(index=False))
+    
     print(f"\n  Gráfica guardada en: {plot_path}")
+    print(f"  Métricas guardadas en: {metrics_path}")
     print("="*70)
 
 if __name__ == '__main__':

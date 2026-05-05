@@ -17,6 +17,9 @@ El repositorio está organizado de la siguiente manera:
 - `EDA/`: Visualizaciones generadas por los scripts de análisis:
     - `XM/`: Análisis detallado de la planta solar (perfiles por hora, promedios diarios, etc.).
     - `NASA_xm_correlation/`: Heatmaps de correlación y gráficos de dispersión.
+    - `FINAL_COMPARISON/`: Resultados de la comparativa final horaria (SARIMAX vs LSTM).
+    - `MONTHLY_COMPARISON/`: Resultados de la batalla final mensual (SARIMAX vs LSTM vs MLP).
+    - `LSTM_grid_search/`: Comparativa de rendimiento según ventana de memoria (7, 14, 30 días).
 - `output/`: Directorio para modelos entrenados y resultados técnicos.
 
 ## Metodología de Procesamiento
@@ -83,3 +86,40 @@ Para garantizar la robustez del modelo, se utilizan tres fuentes principales de 
 Este archivo es el resultado de ejecutar `dataset_maker.py`. Combina las variables de NASA POWER con la generación real de XM.
 - **Rango:** 06:00 AM a 05:00 PM (12 registros por día).
 - **Contenido:** `Fecha_Hora`, `Irradiancia_It`, `Temperatura_Tt`, `Humedad_Ht`, `Viento_Wt`, `kWh`.
+
+## Fase de Modelado Avanzado
+
+En esta fase se implementaron modelos de aprendizaje profundo (Deep Learning) y estadísticos para predecir la generación eléctrica.
+
+### 1. Modelos Horarios (High-Complexity LSTM)
+Se diseñó un modelo **LSTM Bidireccional** de alta complejidad con las siguientes características:
+- **Arquitectura:** 3 capas de LSTM Bidireccional, 128 neuronas por capa, con `LayerNormalization` y `Dropout(0.3)`.
+- **Ventana de Entrada:** 168 horas (14 días solares).
+- **Características:** Variables exógenas (Clima) + Codificación Cíclica (Hora y Mes).
+
+#### Estrategia de Evaluación
+Se utilizaron dos enfoques de validación:
+1. **Simple Recursive (Ciego):** El modelo predice un bloque de 12h, inyecta su propia predicción como entrada para el siguiente bloque y así sucesivamente hasta completar el semestre (10% test). Es la prueba más difícil pues no hay corrección externa.
+2. **Sliding Window (Día a Día):** El modelo predice 12h, pero recibe el dato real de generación para actualizar su memoria antes de predecir el siguiente día. Ideal para operación en tiempo real.
+
+### 2. Modelos Mensuales (Batalla Final)
+Se creó un dataset mensual (`monthly-data.csv`) con promedios y desviaciones estándar de las variables climáticas para comparar tres arquitecturas:
+
+| Modelo | Descripción | Ventana de Memoria |
+| :--- | :--- | :--- |
+| **SARIMAX** | Estadístico clásico con estacionalidad de 12 meses. | Historial completo |
+| **XGBoost** | Gradient Boosting optimizado para datos tabulares. | 12 meses |
+| **MLP** | Red Densa (Perceptrón) de alta complejidad con BatchNorm. | 12 meses |
+| **LSTM** | Red recurrente ligera optimizada para series cortas. | 12 meses |
+
+### 3. Resultados y Hallazgos Principales
+
+#### Comparativa Mensual (Test Jul-Dic 2023)
+| Modelo | MAPE (%) | Conclusión |
+| :--- | :--- | :--- |
+| **SARIMAX** | **8.56%** | El líder en estabilidad y precisión a largo plazo. |
+| **XGBoost** | **12.92%** | Excelente desempeño, el mejor de los modelos no estadísticos. |
+| **MLP** | **27.72%** | Inestable en predicción recursiva a pesar de su complejidad. |
+| **LSTM** | **38.81%** | Muy sensible al ruido en ventanas mensuales pequeñas. |
+
+**Lección aprendida:** Para proyecciones de largo alcance (meses) con datasets pequeños, los modelos estadísticos como SARIMAX son superiores. El Deep Learning destaca en la escala horaria cuando se cuenta con retroalimentación diaria (Sliding Window).
