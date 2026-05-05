@@ -116,6 +116,24 @@ def main():
     plt.savefig(os.path.join(output_dir, 'boxplot_generacion_hora.png'))
     plt.close()
     
+    # ---------------------------------------------------------
+    # 6. Exportar suma mensual desde data-hourly.csv
+    # ---------------------------------------------------------
+    hourly_data_path = os.path.join(base_dir, '..', 'data', 'data-hourly.csv')
+    if os.path.exists(hourly_data_path):
+        df_hourly = pd.read_csv(hourly_data_path)
+        df_hourly['Fecha_Hora'] = pd.to_datetime(df_hourly['Fecha_Hora'])
+        df_hourly['Mes_Año'] = df_hourly['Fecha_Hora'].dt.to_period('M')
+        
+        df_monthly_csv = df_hourly.groupby('Mes_Año')['kWh'].sum().reset_index()
+        df_monthly_csv.columns = ['Mes', 'Generacion_Total_kWh']
+        
+        monthly_csv_path = os.path.join(base_dir, '..', 'data', 'monthly-kwh.csv')
+        df_monthly_csv.to_csv(monthly_csv_path, index=False)
+        print(f"Exportado resumen mensual en: {os.path.normpath(monthly_csv_path)}")
+    else:
+        print(f"Advertencia: No se encontró {hourly_data_path} para exportar el resumen mensual.")
+
     print(f"Análisis completado. Gráficas actualizadas en: {os.path.normpath(output_dir)}")
 
 if __name__ == "__main__":
