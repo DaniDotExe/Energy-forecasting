@@ -23,5 +23,18 @@ Se utiliza la API de [Open-Meteo](https://open-meteo.com/) (Modelo ERA5/ERA5-Lan
 
 **Archivo de salida:** `data/openmeteo-horario.csv`
 
+### 2. NASA POWER (Datos Climáticos Satelitales)
+Se utiliza la API de [NASA POWER](https://power.larc.nasa.gov/) (Prediction Of Worldwide Energy Resources) para obtener un segundo conjunto de reanálisis climático para las mismas coordenadas y el mismo rango horario diurno (**06:00 a 17:00**).
+
+| Variable API | Columna CSV | Unidad | Descripción |
+| :--- | :--- | :--- | :--- |
+| `time_local` | `Fecha_Hora` | YYYY-MM-DD HH:MM | Marca de tiempo en zona horaria local. |
+| `ALLSKY_SFC_SW_DWN` | `Irradiancia_It` | Wh/m² | Irradiancia de onda corta hacia abajo (superficie). |
+| `T2M` | `Temperatura_Tt` | °C | Temperatura a 2 metros. |
+| `RH2M` | `Humedad_Ht` | % | Humedad relativa a 2 metros. |
+| `WS10M` | `Viento_Wt` | km/h | Velocidad del viento a 10 metros (convertido de m/s). |
+
+**Archivo de salida:** `data/nasapower-horario.csv`
+
 ---
-*Próximamente se documentarán las fuentes de Generación Real (XM) y Pronósticos.*
+*Próximamente se documentarán las fuentes de Generación Real (XM).*
