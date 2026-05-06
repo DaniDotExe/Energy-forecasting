@@ -12,6 +12,8 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from statsmodels.tsa.statespace.sarimax import SARIMAX
+import pickle
+import json
 
 # ──────────────────────────────────────────────────────────────────────
 # CONFIGURACIÓN Y RUTAS
@@ -137,83 +139,109 @@ def main():
     scaled_test = scaler.transform(test_df[ALL_FEATURES])
 
     # 2. Entrenamiento LSTM
-    print("\n[1/2] Entrenando LSTM...")
-    X_train, y_train = create_sequences(scaled_train)
-    # Para validación necesitamos contexto de train
-    full_scaled = np.concatenate([scaled_train, scaled_val], axis=0)
+    model_path = os.path.join(OUTPUT_DIR, 'best_lstm.pth')
+    history_path = os.path.join(OUTPUT_DIR, 'train_history.json')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = SolarLSTM().to(device)
+    
+    if os.path.exists(model_path) and os.path.exists(history_path):
+        print("\n[1/2] Cargando LSTM y su historial ya entrenados...")
+        model.load_state_dict(torch.load(model_path, map_location=device))
+        with open(history_path, 'r') as f:
+            history = json.load(f)
+    else:
+        print("\n[1/2] Entrenando LSTM...")
+        X_train, y_train = create_sequences(scaled_train)
+        # Para validación necesitamos contexto de train
+        full_scaled = np.concatenate([scaled_train, scaled_val], axis=0)
+        X_val, y_val = [], []
+        for i in range(n_train, len(full_scaled) - OUTPUT_WINDOW + 1, OUTPUT_WINDOW):
+            X_val.append(full_scaled[i-INPUT_WINDOW : i])
+            y_val.append(full_scaled[i : i+OUTPUT_WINDOW, -1])
+        X_val, y_val = np.array(X_val), np.array(y_val)
+
+        criterion = nn.MSELoss()
+        optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+        
+        train_loader = DataLoader(SolarDataset(X_train, y_train), batch_size=BATCH_SIZE, shuffle=True)
+        
+        history = {'train_loss': [], 'val_loss': []}
+        best_val_loss = float('inf')
+        epochs_no_improve = 0
+
+        for epoch in range(MAX_EPOCHS):
+            model.train()
+            t_losses = []
+            for xb, yb in train_loader:
+                xb, yb = xb.to(device), yb.to(device)
+                optimizer.zero_grad()
+                pred = model(xb)
+                loss = criterion(pred, yb)
+                loss.backward()
+                optimizer.step()
+                t_losses.append(loss.item())
+            
+            model.eval()
+            v_losses = []
+            with torch.no_grad():
+                val_in = torch.FloatTensor(X_val).to(device)
+                val_out = torch.FloatTensor(y_val).to(device)
+                v_pred = model(val_in)
+                v_loss = criterion(v_pred, val_out)
+                v_losses.append(v_loss.item())
+            
+            avg_t = np.mean(t_losses)
+            avg_v = np.mean(v_losses)
+            history['train_loss'].append(avg_t)
+            history['val_loss'].append(avg_v)
+
+            if (epoch+1) % 10 == 0:
+                print(f"    Epoch {epoch+1:3d}: Train Loss={avg_t:.6f}, Val Loss={avg_v:.6f}")
+
+            if avg_v < best_val_loss:
+                best_val_loss = avg_v
+                torch.save(model.state_dict(), model_path)
+                with open(history_path, 'w') as f:
+                    json.dump(history, f)
+                epochs_no_improve = 0
+            else:
+                epochs_no_improve += 1
+                if epochs_no_improve >= PATIENCE:
+                    print(f"    Early stopping en época {epoch+1}")
+                    break
+
+        # Cargar mejor modelo
+        model.load_state_dict(torch.load(model_path))
+    
+    # Recalcular X_val para el test si no se entrenó (necesario para X_test)
     X_val, y_val = [], []
+    full_scaled = np.concatenate([scaled_train, scaled_val], axis=0)
     for i in range(n_train, len(full_scaled) - OUTPUT_WINDOW + 1, OUTPUT_WINDOW):
         X_val.append(full_scaled[i-INPUT_WINDOW : i])
         y_val.append(full_scaled[i : i+OUTPUT_WINDOW, -1])
     X_val, y_val = np.array(X_val), np.array(y_val)
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = SolarLSTM().to(device)
-    criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    
-    train_loader = DataLoader(SolarDataset(X_train, y_train), batch_size=BATCH_SIZE, shuffle=True)
-    
-    history = {'train_loss': [], 'val_loss': []}
-    best_val_loss = float('inf')
-    epochs_no_improve = 0
-
-    for epoch in range(MAX_EPOCHS):
-        model.train()
-        t_losses = []
-        for xb, yb in train_loader:
-            xb, yb = xb.to(device), yb.to(device)
-            optimizer.zero_grad()
-            pred = model(xb)
-            loss = criterion(pred, yb)
-            loss.backward()
-            optimizer.step()
-            t_losses.append(loss.item())
-        
-        model.eval()
-        v_losses = []
-        with torch.no_grad():
-            # Inferencia simple para val
-            val_in = torch.FloatTensor(X_val).to(device)
-            val_out = torch.FloatTensor(y_val).to(device)
-            v_pred = model(val_in)
-            v_loss = criterion(v_pred, val_out)
-            v_losses.append(v_loss.item())
-        
-        avg_t = np.mean(t_losses)
-        avg_v = np.mean(v_losses)
-        history['train_loss'].append(avg_t)
-        history['val_loss'].append(avg_v)
-
-        if (epoch+1) % 10 == 0:
-            print(f"    Epoch {epoch+1:3d}: Train Loss={avg_t:.6f}, Val Loss={avg_v:.6f}")
-
-        if avg_v < best_val_loss:
-            best_val_loss = avg_v
-            torch.save(model.state_dict(), os.path.join(OUTPUT_DIR, 'best_lstm.pth'))
-            epochs_no_improve = 0
-        else:
-            epochs_no_improve += 1
-            if epochs_no_improve >= PATIENCE:
-                print(f"    Early stopping en época {epoch+1}")
-                break
-
-    # Cargar mejor modelo
-    model.load_state_dict(torch.load(os.path.join(OUTPUT_DIR, 'best_lstm.pth')))
     
     # 3. Entrenamiento SARIMAX
-    print("\n[2/2] Entrenando SARIMAX(2,0,1)(1,1,1)12...")
-    sarimax_model = SARIMAX(
-        train_df[TARGET_COL],
-        exog=train_df[EXOG_COLS],
-        order=SARIMAX_ORDER,
-        seasonal_order=SARIMAX_SEASONAL,
-        enforce_stationarity=False,
-        enforce_invertibility=False
-    )
-    t0_sarima = time.time()
-    sarimax_result = sarimax_model.fit(disp=False, maxiter=50)
-    print(f"    SARIMAX entrenado en {time.time() - t0_sarima:.1f}s")
+    sarimax_path = os.path.join(OUTPUT_DIR, 'sarimax_results.pkl')
+    if os.path.exists(sarimax_path):
+        print("\n[2/2] Cargando SARIMAX ya entrenado...")
+        with open(sarimax_path, 'rb') as f:
+            sarimax_result = pickle.load(f)
+    else:
+        print("\n[2/2] Entrenando SARIMAX(2,0,1)(1,1,1)12...")
+        sarimax_model = SARIMAX(
+            train_df[TARGET_COL],
+            exog=train_df[EXOG_COLS],
+            order=SARIMAX_ORDER,
+            seasonal_order=SARIMAX_SEASONAL,
+            enforce_stationarity=False,
+            enforce_invertibility=False
+        )
+        t0_sarima = time.time()
+        sarimax_result = sarimax_model.fit(disp=False, maxiter=50)
+        print(f"    SARIMAX entrenado en {time.time() - t0_sarima:.1f}s")
+        with open(sarimax_path, 'wb') as f:
+            pickle.dump(sarimax_result, f)
     
     # 4. Inferencia en TEST
     print("\nEvaluando en Test...")
@@ -326,14 +354,14 @@ def main():
     metrics_df = pd.DataFrame([
         {'Modelo': 'SARIMAX', **metrics_s},
         {'Modelo': 'LSTM', **metrics_l}
-    ])
+    ]).round(2)
     fig, ax = plt.subplots(figsize=(8, 2))
     ax.axis('off')
     tbl = ax.table(cellText=metrics_df.values, colLabels=metrics_df.columns, loc='center', cellLoc='center')
     tbl.auto_set_font_size(False)
     tbl.set_fontsize(12)
     tbl.scale(1.2, 2)
-    plt.title('Tabla de Métricas Comparativas', y=1.2, fontsize=14, fontweight='bold')
+    plt.title('Tabla de Métricas Comparativas (Horario)', y=1.2, fontsize=14, fontweight='bold')
     plt.savefig(os.path.join(OUTPUT_DIR, '06_tabla_metricas.png'), dpi=200, bbox_inches='tight')
 
     # comparacion_final.png (Bar chart RMSE/MAE)
@@ -374,6 +402,15 @@ def main():
     plt.plot(test_monthly['Fecha'], test_monthly['Real'], marker='o', label='Real (Mensual)', color='black', linewidth=2)
     plt.plot(test_monthly['Fecha'], test_monthly['SARIMAX'], marker='s', label='SARIMAX', linestyle='--', alpha=0.8)
     plt.plot(test_monthly['Fecha'], test_monthly['LSTM'], marker='^', label='LSTM', linestyle='--', alpha=0.8)
+    
+    # Texto de métricas (incluyendo MAPE)
+    textstr = '\n'.join((
+        f'LSTM: RMSE={m_metrics_l["RMSE"]:.2f}, MAE={m_metrics_l["MAE"]:.2f}, MAPE={m_metrics_l["MAPE (%)"]:.2f}%',
+        f'SARIMAX: RMSE={m_metrics_s["RMSE"]:.2f}, MAE={m_metrics_s["MAE"]:.2f}, MAPE={m_metrics_s["MAPE (%)"]:.2f}%'
+    ))
+    plt.gca().text(0.02, 0.95, textstr, transform=plt.gca().transAxes, fontsize=10,
+                   verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.5))
+
     plt.title('Comparación de Energía Mensual (Suma kWh)', fontsize=14, fontweight='bold')
     plt.ylabel('Energía Total (kWh)')
     plt.legend()
@@ -383,11 +420,16 @@ def main():
     # Gráfica de Error Mensual (Barra)
     test_monthly['SARIMAX_Error'] = np.abs(test_monthly['Real'] - test_monthly['SARIMAX'])
     test_monthly['LSTM_Error'] = np.abs(test_monthly['Real'] - test_monthly['LSTM'])
+    test_monthly['Mes_Año'] = test_monthly['Fecha'].dt.strftime('%m-%Y')
     
-    test_monthly.set_index('Fecha')[['SARIMAX_Error', 'LSTM_Error']].plot(kind='bar', figsize=(10, 5), color=['#1f77b4', '#ff7f0e'])
-    plt.title('Error Absoluto en Suma Mensual', fontsize=14, fontweight='bold')
+    total_err_s = test_monthly['SARIMAX_Error'].sum()
+    total_err_l = test_monthly['LSTM_Error'].sum()
+
+    ax = test_monthly.set_index('Mes_Año')[['SARIMAX_Error', 'LSTM_Error']].plot(kind='bar', figsize=(10, 5), color=['#1f77b4', '#ff7f0e'])
+    plt.title(f'Error Absoluto Mensual (Suma kWh)\nTotal SARIMAX: {total_err_s:.2f} | Total LSTM: {total_err_l:.2f}', fontsize=12, fontweight='bold')
     plt.ylabel('Error (kWh)')
-    plt.xticks(rotation=45)
+    plt.xticks(rotation=0)
+    plt.grid(axis='y', alpha=0.3)
     plt.savefig(os.path.join(MONTHLY_OUTPUT_DIR, '02_error_mensual_barras.png'), dpi=200, bbox_inches='tight')
 
     # Serie Completa Mensual
@@ -395,13 +437,15 @@ def main():
     plt.figure(figsize=(16, 6))
     plt.plot(df_monthly['Fecha_Hora'], df_monthly[TARGET_COL], color='gray', alpha=0.3, label='Historial Mensual')
     plt.plot(test_monthly['Fecha'], test_monthly['Real'], color='black', label='Real (Test)', linewidth=2)
+    plt.plot(test_monthly['Fecha'], test_monthly['SARIMAX'], color='blue', label='SARIMAX Pred', linestyle='--', alpha=0.7)
     plt.plot(test_monthly['Fecha'], test_monthly['LSTM'], color='orange', label='LSTM Pred', alpha=0.8)
     plt.axvline(x=test_monthly['Fecha'].iloc[0], color='red', linestyle='--', label='Inicio Test')
-    plt.title('Historial y Predicciones a Escala Mensual', fontsize=14, fontweight='bold')
+    plt.title('Historial y Predicciones a Escala Mensual (Ambos Modelos)', fontsize=14, fontweight='bold')
     plt.legend()
     plt.savefig(os.path.join(MONTHLY_OUTPUT_DIR, '03_serie_completa_mensual.png'), dpi=200, bbox_inches='tight')
 
     # Tabla de métricas en imagen
+    m_metrics_df = m_metrics_df.round(2)
     fig, ax = plt.subplots(figsize=(8, 2))
     ax.axis('off')
     tbl = ax.table(cellText=m_metrics_df.values, colLabels=m_metrics_df.columns, loc='center', cellLoc='center')
