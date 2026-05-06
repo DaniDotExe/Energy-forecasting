@@ -102,15 +102,15 @@ Se utilizaron dos enfoques de validación:
 1. **Simple Recursive (Ciego):** El modelo predice un bloque de 12h, inyecta su propia predicción como entrada para el siguiente bloque y así sucesivamente hasta completar el semestre (10% test). Es la prueba más difícil pues no hay corrección externa.
 2. **Sliding Window (Día a Día):** El modelo predice 12h, pero recibe el dato real de generación para actualizar su memoria antes de predecir el siguiente día. Ideal para operación en tiempo real.
 
-### 2. Modelos Mensuales (Batalla Final)
-Se creó un dataset mensual (`monthly-data.csv`) con promedios y desviaciones estándar de las variables climáticas para comparar tres arquitecturas:
+### 2. Modelos y Estrategias de Evaluación
+Se aplicaron tres metodologías distintas para evaluar el desempeño en el periodo de test (Jul-Dic 2023):
 
-| Modelo | Descripción | Ventana de Memoria |
+| Modelo | Estrategia de Evaluación | Descripción |
 | :--- | :--- | :--- |
-| **SARIMAX** | Estadístico clásico con estacionalidad de 12 meses. | Historial completo |
-| **XGBoost** | Gradient Boosting optimizado para datos tabulares. | 12 meses |
-| **MLP** | Red Densa (Perceptrón) de alta complejidad con BatchNorm. | 12 meses |
-| **LSTM** | Red recurrente ligera optimizada para series cortas. | 12 meses |
+| **SARIMAX** | **Recursive Forecast** | Predice paso a paso usando el clima real del futuro y su propia estructura de estacionalidad estadística. |
+| **LSTM / MLP** | **Simple Recursive (Ciego)** | El modelo predice un paso y usa su propia salida como entrada para el siguiente. Es una prueba de resistencia a la deriva sin corrección real. |
+| **XGBoost (Mem)** | **Autoregressive Recursive** | Utiliza una ventana de memoria (12m para mensual, 7d para diario) que se actualiza recursivamente con sus propias predicciones. |
+| **XGBoost (Dir)** | **Direct Regression** | **Sin Memoria.** Predice la energía de un mes/día basándose exclusivamente en el clima de ese momento. No mira el historial de kWh. |
 
 ### 3. Resultados y Hallazgos Principales
 
