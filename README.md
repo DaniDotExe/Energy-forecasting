@@ -115,30 +115,32 @@ Se aplicaron tres metodologías distintas para evaluar el desempeño en el perio
 ### 3. Resultados y Hallazgos Principales
 
 #### **A. Comparativa Mensual (Cold-Start Jul-Dic 2023)**
-En esta prueba, los modelos predijeron 6 meses "a ciegas" basándose solo en el clima y su propio historial.
+En esta prueba, los modelos predijeron 6 meses basándose solo en el clima y su propio historial (si aplica).
 
-| Modelo | MAPE (%) | Estrategia | Conclusión |
-| :--- | :--- | :--- | :--- |
-| 🥇 **SARIMAX** | **8.56%** | Estadística | El más estable para proyecciones de largo plazo. |
-| 🥈 **XGBoost (Mem)** | **12.92%** | Memoria 12m | El mejor modelo de Machine Learning con contexto histórico. |
-| 🥉 **XGBoost (Dir)** | **14.85%** | **Solo Clima** | Demuestra que el clima explica el 85% de la generación. |
-| 4️⃣ **MLP** | 27.72% | Red Densa | Sufre de deriva en proyecciones muy largas. |
-| 5️⃣ **LSTM** | 38.81% | Recurrente | Sensible a la propagación de errores recursivos. |
+| Modelo | MAPE (%) | RMSE | MAE | Estrategia |
+| :--- | :---: | :---: | :---: | :--- |
+| 🥇 **SARIMAX** | **8.56%** | 1,203,975 | 1,107,704 | Recursive |
+| 🥈 **XGBoost (Mem)** | **12.92%** | 1,824,071 | 1,726,565 | Auto-Recursive |
+| 🥉 **XGBoost (Dir)** | **14.85%** | 2,291,429 | 2,008,321 | **Direct Reg** |
+| 4️⃣ **MLP** | 27.72% | 3,801,883 | 3,660,269 | Recursive |
+| 5️⃣ **LSTM** | 38.81% | 5,328,785 | 5,128,718 | Recursive |
 
 #### **B. Comparativa Diaria (Acumulado Mensual Jul-Dic 2023)**
-En esta prueba, los modelos predijeron hora a hora y se acumuló el resultado al final del mes.
+Los modelos operaron a nivel horario y se acumuló el resultado para comparar con el cierre mensual.
 
-| Modelo | MAPE (%) | RMSE | Hallazgo |
-| :--- | :--- | :--- | :--- |
-| 🥇 **SARIMAX** | **6.42%** | 1,223,760 | Excelente precisión al captar ciclos horarios. |
-| 🥈 **MLP** | **7.41%** | 1,028,498 | La red neuronal más eficiente en escala horaria. |
-| 🥉 **LSTM** | **8.99%** | 1,831,841 | Captura muy bien la secuencia pero con más ruido que el MLP. |
+| Modelo | MAPE (%) | RMSE | MAE | Hallazgo |
+| :--- | :---: | :---: | :---: | :--- |
+| 🥇 **SARIMAX** | **6.41%** | 1,223,760 | 872,761 | Líder en precisión horaria. |
+| 🥈 **MLP** | **7.40%** | 1,028,498 | 957,490 | Mejor red neuronal en esta escala. |
+| 🥉 **LSTM** | **8.99%** | 1,831,841 | 1,236,790 | Gran captura de estacionalidad. |
+| 4️⃣ **XGBoost (Dir)** | 13.54% | 1,987,867 | 1,796,994 | Consistente con solo clima. |
+| 5️⃣ **XGBoost (Mem)** | 23.37% | 3,178,524 | 3,066,689 | Acumulación de error recursivo. |
 
 ## Conclusión General
 El proyecto demuestra que para el pronóstico de energía solar en esta planta:
-1. Las variables climáticas (Irradiancia y Temperatura) son los predictores más críticos.
-2. Los modelos estadísticos (SARIMAX) siguen siendo superiores para planeación mensual de largo plazo.
-3. Las redes neuronales (MLP/LSTM) son herramientas poderosas para la operación diaria, logrando errores menores al 10% cuando se evalúan en escala horaria.
+1. Las variables climáticas (Irradiancia y Temperatura) son los predictores más críticos (explican >85% de la varianza).
+2. Los modelos estadísticos (SARIMAX) son superiores para planeación estratégica de largo plazo (meses).
+3. Las redes neuronales (MLP/LSTM) destacan en la operación táctica diaria, logrando errores menores al 10%.
 
 ---
 *Desarrollado como parte del pipeline de optimización de pronósticos energéticos.*
